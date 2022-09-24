@@ -1,0 +1,57 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD=postgres_password
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+  nginx:
+    restart: unless-stopped
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./nginx
+    ports:
+      - '8080:80'
+    depends_on:
+      - client
+      - api
+  api:
+    restart: unless-stopped
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./server # Dockerfile.dev path
+    volumes:
+      - /app/node_modules # bookmark (letting docker know not override this folder / leave this folder as is)
+      - ./server:/app # copy everything in ./server folder into /app of server dir of the container
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PGUSER=postgres #default
+      - PGHOST=postgres #from postgres service(image)
+      - PGDATABASE=postgres #default
+      - PGPASSWORD=postgres_password #default
+      - PGPORT=5432 #default
+  client:
+    restart: unless-stopped
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./client
+    volumes:
+      - /app/node_modules
+      - ./client:/app
+    environment:
+      - WDS_SOCKET_PORT=0
+  worker:
+    restart: unless-stopped
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./worker
+    volumes:
+      - /app/node_modules
+      - ./worker:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
